@@ -9,7 +9,7 @@
     body { font-family: 'Malgun Gothic', sans-serif; background: #f0f4f8; display: flex; justify-content: center; padding: 20px; margin: 0; }
     .quiz-card { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
     h2 { color: #333; margin-bottom: 20px; }
-    input[type="text"] { width: 80%; padding: 15px; font-size: 20px; border: 2px solid #ddd; border-radius: 12px; margin-bottom: 20px; text-align: center; }
+    select { width: 80%; padding: 15px; font-size: 20px; border: 2px solid #ddd; border-radius: 12px; margin-bottom: 20px; text-align: center; }
     .btn { width: 100%; min-height: 60px; font-size: 20px; border: none; border-radius: 12px; background: #4F46E5; color: white; cursor: pointer; margin-top: 10px; font-weight: bold; }
     .btn:active { background: #3730A3; }
     .option-btn { background: #F3F4F6; color: #1F2937; margin-bottom: 12px; text-align: left; padding: 15px 20px; border: 2px solid #E5E7EB; }
@@ -19,11 +19,13 @@
 <body>
 
 <div class="quiz-card">
-  <!-- 1. 학번 입력 화면 -->
+  <!-- 1. 번호 선택 화면 -->
   <div id="start-screen">
     <h2>🤖 AI 인공지능 퀴즈</h2>
-    <p style="font-size: 18px; color: #666;">학번을 입력하고 시작하세요!</p>
-    <input type="text" id="student-id" placeholder="예: 10101 (1학년 1반 1번)" autocomplete="off">
+    <p style="font-size: 18px; color: #666;">본인의 번호를 선택해 주세요!</p>
+    <select id="student-num">
+      <option value="">-- 번호 선택 --</option>
+    </select>
     <button class="btn" onclick="startQuiz()">퀴즈 시작하기</button>
   </div>
 
@@ -38,13 +40,36 @@
   <div id="result-screen" class="hidden">
     <h2>🎉 퀴즈 완료!</h2>
     <p id="score-text" style="font-size: 24px; font-weight: bold; color: #10B981;"></p>
-    <p id="status-text" style="font-size: 18px; color: #666;">결과를 선생님에게 제출하는 중...</p>
+    <p id="status-text" style="font-size: 18px; color: #666;">제출 중...</p>
   </div>
 </div>
 
-<script>
-  // ⚠️ 여기에 1단계에서 복사한 구글 앱스 스크립트 URL을 넣으세요!
-  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwEVMXlgs18sWRr-UTqYxXjzddxhxStwrHlCFy-jIPpv4Sl2Cd94G8mUPXpiBQyUps/exec";
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDtepPDgVMiDNzS52QA-US-6eIOZFD14l4",
+    authDomain: "class-25c72.firebaseapp.com",
+    databaseURL: "https://class-25c72-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "class-25c72",
+    storageBucket: "class-25c72.firebasestorage.app",
+    messagingSenderId: "751987523476",
+    appId: "1:751987523476:web:54ca2be90784ee61add981"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // 번호 (1~28번) 셀렉트 박스 생성
+  const numSelect = document.getElementById("student-num");
+  for (let i = 1; i <= 28; i++) {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${i}번`;
+    numSelect.appendChild(opt);
+  }
 
   const questions = [
     { q: "다음 중 인공지능(AI)의 정의로 가장 알맞은 것은?", options: ["사람처럼 생각하고 학습하는 컴퓨터 시스템", "화면을 밝게 해주는 장치", "인터넷 속도를 빠르게 하는 기술", "전기를 절약해주는 장치"], answer: 0 },
@@ -56,25 +81,24 @@
 
   let currentQuiz = 0;
   let score = 0;
-  let studentId = "";
+  let studentNum = "";
 
-  function startQuiz() {
-    studentId = document.getElementById("student-id").value.trim();
-    if (!studentId) {
-      alert("학번을 입력해 주세요!");
+  window.startQuiz = function() {
+    studentNum = document.getElementById("student-num").value;
+    if (!studentNum) {
+      alert("번호를 선택해 주세요!");
       return;
     }
     document.getElementById("start-screen").classList.add("hidden");
     document.getElementById("quiz-screen").classList.remove("hidden");
     loadQuestion();
-  }
+  };
 
   function loadQuestion() {
     const q = questions[currentQuiz];
     document.getElementById("question-number").innerText = `문제 ${currentQuiz + 1} / ${questions.length}`;
     document.getElementById("question-text").innerText = q.q;
 
-    // 보기 셔플
     let optionsWithIndex = q.options.map((opt, idx) => ({ text: opt, isCorrect: idx === q.answer }));
     optionsWithIndex.sort(() => Math.random() - 0.5);
 
@@ -97,24 +121,24 @@
     if (currentQuiz < questions.length) {
       loadQuestion();
     } else {
-      showResult();
+      submitAndShowResult();
     }
   }
 
-  function showResult() {
+  function submitAndShowResult() {
     document.getElementById("quiz-screen").classList.add("hidden");
     document.getElementById("result-screen").classList.remove("hidden");
-    document.getElementById("score-text").innerText = `${studentId}님은 5문제 중 ${score}문제를 맞혔습니다!`;
+    document.getElementById("score-text").innerText = `${studentNum}번 학생: 5문제 중 ${score}문제 맞힘!`;
 
-    // 구글 시트로 데이터 전송
-    fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId: studentId, score: score })
+    // answers/ 경로에 push 제출 (읽기 코드 없음)
+    push(ref(db, "answers"), {
+      studentNum: Number(studentNum),
+      score: score,
+      submittedAt: new Date().toISOString()
     }).then(() => {
-      document.getElementById("status-text").innerText = "선생님 시트에 성공적으로 제출되었습니다! 🎉";
-    }).catch(() => {
+      document.getElementById("status-text").innerText = "선생님께 성공적으로 제출되었습니다! 👍";
+    }).catch((err) => {
+      console.error(err);
       document.getElementById("status-text").innerText = "제출 중 오류가 발생했습니다.";
     });
   }
