@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>교사용 AI 퀴즈 결과 확인</title>
+  <style>
+    body { font-family: 'Malgun Gothic', sans-serif; background: #f8fafc; padding: 20px; margin: 0; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    h1 { color: #1e293b; text-align: center; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: center; }
+    th { background: #4f46e5; color: white; }
+    tr:nth-child(even) { background: #f8fafc; }
+    .status { text-align: right; font-size: 14px; color: #64748b; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>📊 학생 제출 현황 (실시간)</h1>
+  <div class="status" id="last-update">업데이트 대기 중...</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>번호</th>
+        <th>점수</th>
+        <th>맞힌 개수</th>
+        <th>제출 시간</th>
+      </tr>
+    </thead>
+    <tbody id="result-table">
+      <tr><td colspan="4">데이터를 불러오는 중입니다...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDtepPDgVMiDNzS52QA-US-6eIOZFD14l4",
+    authDomain: "class-25c72.firebaseapp.com",
+    databaseURL: "https://class-25c72-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "class-25c72",
+    storageBucket: "class-25c72.firebasestorage.app",
+    messagingSenderId: "751987523476",
+    appId: "1:751987523476:web:54ca2be90784ee61add981"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const answersRef = ref(db, "answers");
+
+  // snap.val()과 Object.keys()를 이용한 데이터 읽기
+  onValue(answersRef, (snapshot) => {
+    const data = snapshot.val();
+    const tbody = document.getElementById("result-table");
+    tbody.innerHTML = "";
+
+    if (!data) {
+      tbody.innerHTML = '<tr><td colspan="4">아직 제출된 결과가 없습니다.</td></tr>';
+      return;
+    }
+
+    const keys = Object.keys(data);
+    const resultsList = keys.map(key => data[key]);
+
+    // 번호 오름차순 정렬
+    resultsList.sort((a, b) => a.studentNum - b.studentNum);
+
+    resultsList.forEach(item => {
+      const row = document.createElement("tr");
+      const date = item.submittedAt ? new Date(item.submittedAt).toLocaleTimeString() : "-";
+      
+      row.innerHTML = `
+        <td><strong>${item.studentNum}번</strong></td>
+        <td>${item.score * 20}점</td>
+        <td>${item.score} / 5</td>
+        <td>${date}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    document.getElementById("last-update").innerText = `최종 갱신: ${new Date().toLocaleTimeString()} (총 ${resultsList.length}건)`;
+  });
+</script>
+
+</body>
+</html>
