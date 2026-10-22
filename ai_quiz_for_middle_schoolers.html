@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 중1 정보 AI 퀴즈 탐험대</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Jua, Noto Sans KR) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti Library for completion animation -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #e0e7ff 100%);
+            touch-action: manipulation; /* Disable double-tap zoom for smoother tablet interaction */
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        /* Custom animation for selection feedback */
+        .pop-in {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-8">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-2xl bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border-4 border-indigo-200 p-6 sm:p-8 flex flex-col justify-between min-h-[620px] relative overflow-hidden">
+        
+        <!-- Background Decorative Bubbles -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-200 rounded-full opacity-50 blur-xl pointer-events-none"></div>
+        <div class="absolute -bottom-10 -left-10 w-36 h-36 bg-pink-200 rounded-full opacity-50 blur-xl pointer-events-none"></div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="my-auto text-center flex flex-col items-center justify-center space-y-6 py-8">
+            <div class="text-7xl sm:text-8xl mb-2 animate-bounce">🤖</div>
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-jua text-indigo-900 leading-tight">
+                중1 정보<br>
+                <span class="text-indigo-600">인공지능(AI) 퀴즈</span> 탐험대
+            </h1>
+            <p class="text-lg sm:text-xl text-gray-600 max-w-md">
+                인공지능 교과 단원에서 배운 내용을<br>재미있는 퀴즈로 확인해 봐요!
+            </p>
+            <button id="start-btn" onclick="startQuiz()" class="w-full max-w-xs py-5 px-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-jua text-2xl sm:text-3xl rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0 transition-all duration-200 active:scale-95 cursor-pointer">
+                🚀 퀴즈 시작하기!
+            </button>
+        </div>
+
+        <!-- Quiz Screen (Hidden initially) -->
+        <div id="quiz-screen" class="hidden flex-col justify-between h-full">
+            <!-- Header Section: Progress Bar & Question Count -->
+            <div>
+                <div class="flex justify-between items-center mb-3">
+                    <span class="font-jua text-lg sm:text-xl text-indigo-700 bg-indigo-100 px-4 py-1.5 rounded-full">
+                        문제 <span id="current-question-num" class="text-indigo-900 font-bold">1</span> / <span id="total-question-num">5</span>
+                    </span>
+                    <span id="score-live" class="font-jua text-lg text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">
+                        현재 점수: 0점
+                    </span>
+                </div>
+                <!-- Progress Bar -->
+                <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden border border-gray-300">
+                    <div id="progress-bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Question Box -->
+            <div class="my-6">
+                <div class="bg-indigo-50/80 border-2 border-indigo-200 rounded-2xl p-5 sm:p-6 shadow-inner">
+                    <h2 id="question-text" class="text-xl sm:text-2xl font-bold text-gray-800 leading-relaxed">
+                        문제가 여기에 표시됩니다.
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Options Box (Buttons) -->
+            <div id="options-container" class="grid grid-cols-1 gap-3.5 mb-4">
+                <!-- Dynamic options generated via JS -->
+            </div>
+
+            <!-- Feedback & Next Button Box -->
+            <div id="feedback-container" class="hidden pop-in mt-2 p-4 rounded-2xl border-2 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-start gap-3 w-full sm:w-auto">
+                    <span id="feedback-icon" class="text-3xl sm:text-4xl flex-shrink-0"></span>
+                    <div>
+                        <div id="feedback-title" class="font-jua text-xl sm:text-2xl"></div>
+                        <div id="feedback-desc" class="text-sm sm:text-base text-gray-700 mt-1 font-medium"></div>
+                    </div>
+                </div>
+                <button id="next-btn" onclick="nextQuestion()" class="w-full sm:w-auto flex-shrink-0 py-4 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-jua text-xl rounded-xl shadow-md active:scale-95 transition-all cursor-pointer">
+                    다음 문제 ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Screen (Hidden initially) -->
+        <div id="result-screen" class="hidden my-auto text-center flex-col items-center justify-center space-y-6 py-6 pop-in">
+            <div id="result-emoji" class="text-7xl sm:text-8xl mb-2">🎉</div>
+            <h2 id="result-title" class="text-3xl sm:text-4xl font-jua text-indigo-900">
+                퀴즈 완료!
+            </h2>
+            
+            <div class="bg-indigo-50 rounded-2xl p-6 border-2 border-indigo-200 w-full max-w-md shadow-inner space-y-3">
+                <p class="text-xl text-gray-700 font-medium">
+                    총 <span id="total-count" class="font-bold">5</span>문제 중 <span id="correct-count" class="text-indigo-600 font-extrabold text-2xl">0</span>개를 맞혔어요!
+                </p>
+                <div class="text-3xl sm:text-4xl font-jua text-purple-600 my-2">
+                    최종 점수: <span id="final-score">0</span>점
+                </div>
+                <p id="praise-message" class="text-lg font-bold text-emerald-600 pt-2 border-t border-indigo-200">
+                    참 잘했어요!
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <button onclick="restartQuiz()" class="w-full max-w-xs py-5 px-8 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-jua text-2xl rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 active:translate-y-0 transition-all duration-200 active:scale-95 cursor-pointer">
+                🔄 다시 풀기
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Quiz Data - 5 Questions aligned with Grade 7 CS curriculum (AI unit)
+        const rawQuizData = [
+            {
+                question: "1. 컴퓨터가 사람이 작성한 프로그램 규칙 없이, 스스로 데이터를 학습하고 패턴을 찾아 판단하는 기술은 무엇일까요?",
+                options: [
+                    "머신러닝 (기계학습)",
+                    "단순 데이터베이스",
+                    "수동 데이터 입력",
+                    "인터넷 검색 엔진"
+                ],
+                answer: 0,
+                explanation: "머신러닝은 데이터를 기반으로 컴퓨터가 스스로 학습하여 예측이나 판단을 내리게 하는 인공지능 핵심 기술입니다."
+            },
+            {
+                question: "2. 사진에 '고양이', '강아지'처럼 문제와 함께 [정답 레이블]을 붙여서 컴퓨터에게 학습시키는 방법은 무엇일까요?",
+                options: [
+                    "지도 학습 (Supervised Learning)",
+                    "비지도 학습 (Unsupervised Learning)",
+                    "강화 학습 (Reinforcement Learning)",
+                    "무작위 학습 (Random Learning)"
+                ],
+                answer: 0,
+                explanation: "지도 학습은 정답(레이블)이 포함된 데이터를 활용해 학습시키는 방법입니다."
+            },
+            {
+                question: "3. 바둑 AI '알파고'처럼, 어떤 환경에서 행동을 하고 그 결과로 [보상]을 받으며 점점 더 정교한 전략을 배워나가는 학습 방식은?",
+                options: [
+                    "강화 학습 (Reinforcement Learning)",
+                    "지도 학습 (Supervised Learning)",
+                    "비지도 학습 (Unsupervised Learning)",
+                    "단순 암기 학습"
+                ],
+                answer: 0,
+                explanation: "강화 학습은 상이나 벌과 같은 보상 시스템을 통해 최적의 행동 방식을 알아가는 학습법입니다."
+            },
+            {
+                question: "4. 올바른 인공지능 활용을 위해 지켜야 할 [AI 윤리] 규범으로 적절하지 않은 것은 무엇일까요?",
+                options: [
+                    "타인의 개인정보를 보호하고 무단 활용하지 않는다.",
+                    "특정 성별이나 인종에 대해 편향되지 않도록 공정하게 개발한다.",
+                    "AI가 낸 오류나 사고 결과는 모두 인공지능 자체의 책임이므로 사람은 책임질 필요 없다.",
+                    "인간의 안전과 존엄성을 최우선으로 생각한다."
+                ],
+                answer: 2,
+                explanation: "인공지능은 도구일 뿐이므로, AI 개발 및 활용에 따른 최종 책임은 항상 인간(개발자와 사용자)에게 있습니다."
+            },
+            {
+                question: "5. 인간의 뇌 속 '신경망' 구조를 모방하여 만든 복잡한 인공지능 모델로, 대표적으로 자율주행, 음성인식 등에 쓰이는 기술은?",
+                options: [
+                    "딥러닝 (Deep Learning / 심층신경망)",
+                    "엑셀 스프레드시트",
+                    "단순 블록 코딩",
+                    "하드디스크 저장 장치"
+                ],
+                answer: 0,
+                explanation: "딥러닝은 사람의 뇌 신경망 원리를 활용하여 복잡하고 방대한 데이터를 깊이 있게 학습하는 기술입니다."
+            }
+        ];
+
+        let quizQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedOptionIndex = null;
+
+        // Shuffle Array Utility (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // Initialize and Shuffle Questions and Options
+        function prepareQuizData() {
+            // Deep copy raw data and shuffle options for each question
+            quizQuestions = rawQuizData.map(q => {
+                const originalOptions = q.options;
+                const correctAnswerText = originalOptions[q.answer];
+                
+                // Shuffle options
+                const shuffledOptions = shuffleArray(originalOptions);
+                const newAnswerIndex = shuffledOptions.indexOf(correctAnswerText);
+
+                return {
+                    question: q.question,
+                    options: shuffledOptions,
+                    answer: newAnswerIndex,
+                    explanation: q.explanation
+                };
+            });
+            // Shuffle question order as well (optional, currently keeps order 1-5 for sequence clarity)
+        }
+
+        function startQuiz() {
+            prepareQuizData();
+            currentQuestionIndex = 0;
+            score = 0;
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('quiz-screen').classList.add('flex');
+
+            document.getElementById('total-question-num').innerText = quizQuestions.length;
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const currentQ = quizQuestions[currentQuestionIndex];
+            selectedOptionIndex = null;
+
+            // Update Progress Bar & Text
+            document.getElementById('current-question-num').innerText = currentQuestionIndex + 1;
+            document.getElementById('score-live').innerText = `현재 점수: ${score}점`;
+            const progressPercent = ((currentQuestionIndex) / quizQuestions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+            // Set Question Text
+            document.getElementById('question-text').innerText = currentQ.question;
+
+            // Reset Feedback container
+            const feedbackContainer = document.getElementById('feedback-container');
+            feedbackContainer.classList.add('hidden');
+
+            // Render Options
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            const optionLabels = ['①', '②', '③', '④'];
+            const buttonColors = [
+                'hover:border-blue-400 hover:bg-blue-50',
+                'hover:border-emerald-400 hover:bg-emerald-50',
+                'hover:border-amber-400 hover:bg-amber-50',
+                'hover:border-purple-400 hover:bg-purple-50'
+            ];
+
+            currentQ.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `w-full min-h-[64px] py-4 px-5 text-left font-semibold text-lg sm:text-xl text-gray-800 bg-white border-3 border-gray-200 rounded-2xl shadow-sm transition-all duration-150 flex items-center justify-start gap-3 active:scale-[0.98] ${buttonColors[idx % 4]} cursor-pointer`;
+                btn.onclick = () => selectOption(idx);
+                
+                btn.innerHTML = `
+                    <span class="font-jua text-2xl text-indigo-600 bg-indigo-50 rounded-xl px-2.5 py-1 min-w-[36px] text-center border border-indigo-100 flex-shrink-0">${optionLabels[idx]}</span>
+                    <span class="flex-grow leading-snug">${opt}</span>
+                    <span class="status-icon text-2xl flex-shrink-0 ml-1"></span>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectOption(index) {
+            if (selectedOptionIndex !== null) return; // Prevent multiple clicks
+            selectedOptionIndex = index;
+
+            const currentQ = quizQuestions[currentQuestionIndex];
+            const isCorrect = (index === currentQ.answer);
+            const optionsContainer = document.getElementById('options-container');
+            const buttons = optionsContainer.querySelectorAll('button');
+
+            if (isCorrect) {
+                score += 20; // 20 pts per question (5 questions = 100 pts max)
+                document.getElementById('score-live').innerText = `현재 점수: ${score}점`;
+            }
+
+            // Highlight buttons
+            buttons.forEach((btn, idx) => {
+                btn.onclick = null; // Disable clicking
+                btn.classList.remove('active:scale-[0.98]', 'hover:border-blue-400', 'hover:border-emerald-400', 'hover:border-amber-400', 'hover:border-purple-400');
+
+                const statusIcon = btn.querySelector('.status-icon');
+
+                if (idx === currentQ.answer) {
+                    // Correct answer style
+                    btn.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900', 'ring-2', 'ring-emerald-400');
+                    statusIcon.innerText = '⭕';
+                } else if (idx === index && !isCorrect) {
+                    // Selected wrong answer style
+                    btn.classList.add('bg-rose-100', 'border-rose-400', 'text-rose-900');
+                    statusIcon.innerText = '❌';
+                } else {
+                    // Unselected options
+                    btn.classList.add('opacity-50', 'bg-gray-50');
+                }
+            });
+
+            // Show Feedback
+            showFeedback(isCorrect, currentQ.explanation);
+        }
+
+        function showFeedback(isCorrect, explanation) {
+            const feedbackContainer = document.getElementById('feedback-container');
+            const feedbackIcon = document.getElementById('feedback-icon');
+            const feedbackTitle = document.getElementById('feedback-title');
+            const feedbackDesc = document.getElementById('feedback-desc');
+
+            if (isCorrect) {
+                feedbackContainer.className = "pop-in mt-2 p-4 rounded-2xl border-2 bg-emerald-50 border-emerald-300 text-emerald-900 flex flex-col sm:flex-row justify-between items-center gap-4";
+                feedbackIcon.innerText = "🎉";
+                feedbackTitle.innerText = "정답입니다!";
+                feedbackTitle.className = "font-jua text-xl sm:text-2xl text-emerald-700";
+            } else {
+                feedbackContainer.className = "pop-in mt-2 p-4 rounded-2xl border-2 bg-rose-50 border-rose-300 text-rose-900 flex flex-col sm:flex-row justify-between items-center gap-4";
+                feedbackIcon.innerText = "💡";
+                feedbackTitle.innerText = "아쉬워요, 정답이 아니에요!";
+                feedbackTitle.className = "font-jua text-xl sm:text-2xl text-rose-700";
+            }
+
+            feedbackDesc.innerText = explanation;
+            feedbackContainer.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizQuestions.length) {
+                renderQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('result-screen').classList.add('flex');
+
+            const correctNum = score / 20;
+            const totalNum = quizQuestions.length;
+
+            document.getElementById('total-count').innerText = totalNum;
+            document.getElementById('correct-count').innerText = correctNum;
+            document.getElementById('final-score').innerText = score;
+
+            // Customize message & emoji based on score
+            const emojiEl = document.getElementById('result-emoji');
+            const titleEl = document.getElementById('result-title');
+            const praiseEl = document.getElementById('praise-message');
+
+            if (score === 100) {
+                emojiEl.innerText = "🏆";
+                titleEl.innerText = "AI 박사님 등극!";
+                praiseEl.innerText = "완벽해요! 인공지능 단원의 모든 핵심 내용을 마스터하셨네요! 👏";
+                praiseEl.className = "text-lg font-bold text-indigo-600 pt-2 border-t border-indigo-200";
+                
+                // Fire Confetti animation on 100% score
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            } else if (score >= 60) {
+                emojiEl.innerText = "🌟";
+                titleEl.innerText = "훌륭한 탐험가!";
+                praiseEl.innerText = "인공지능 개념을 아주 잘 이해하고 있어요! 정답 해설을 복습해 봐요! 👍";
+                praiseEl.className = "text-lg font-bold text-emerald-600 pt-2 border-t border-indigo-200";
+            } else {
+                emojiEl.innerText = "🌱";
+                titleEl.innerText = "조금 더 연습해 볼까요?";
+                praiseEl.innerText = "괜찮아요! [다시 풀기] 버튼을 눌러 다시 한번 도전해 보세요! 💪";
+                praiseEl.className = "text-lg font-bold text-amber-600 pt-2 border-t border-indigo-200";
+            }
+        }
+
+        function restartQuiz() {
+            startQuiz();
+        }
+    </script>
+</body>
+</html>
